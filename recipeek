@@ -1,0 +1,60 @@
+#!/bin/sh
+
+# TODO: Add built in timer for while food is being cooked
+
+if command -v xdg-user-dir >/dev/null; then
+	recipe_dir="$(xdg-user-dir DOCUMENTS)/recipe"
+else
+	recipe_dir="$HOME/Documents/recipe"
+fi
+
+[ -d "$recipe_dir" ] || {
+	echo "At least one recipe is needed!"
+}
+
+downloaded_recipes=$(ls "$recipe_dir"/*.md)
+
+case $1 in
+	"get")
+		recipe_webpage=$(curl "$2")
+		servings=$(echo "$recipe_webpage" | cat)
+		ingredients=$(echo "$recipe_webpage" | cat)
+		prep_time=$(echo "$recipe_webpage" | cat)
+		total_time=$(echo "$recipe_webpage" | cat)
+		directions=$(echo "$recipe_webpage" | cat)
+
+		for item in $ingredients; do
+			formatted_ingredients="$formatted_ingredients \n - $item"
+		done
+
+		for step in $directions; do
+			formatted_directions="$formatted_directions \n 1. $step"
+		done
+
+		(
+		cat <<-RECIPE_DATA
+		Servings
+		:$servings
+
+		Prep Time
+		:$prep_time
+
+		Total Time
+		:$total_time
+
+		# Ingredients
+		$formatted_ingredients
+
+		# Directions
+		$formatted_directions
+		RECIPE_DATA
+		) > "$recipe_dir"/test.md
+		;;
+	"view")
+		pandoc "$(echo "$downloaded_recipes" | fzf)" -o /tmp/recipeek.pdf
+		zathura /tmp/recipeek.pdf
+		;;
+	"edit")
+		edit "$(echo "$downloaded_recipes" | fzf)"
+		;;
+esac
